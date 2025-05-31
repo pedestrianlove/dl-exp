@@ -1,9 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, random_split
+import numpy as np
 
 import os
 
-from calories import CaloriesDataset, CaloriesPrediction
+from calories import CaloriesDataset, CaloriesTest
+import polars as pl
 
 import torch.multiprocessing as mp
 from torch.utils.data.distributed import DistributedSampler
@@ -12,6 +14,24 @@ from torch.distributed import init_process_group, destroy_process_group
 
 
 class Trainer:
+    # Class members
+    gpu_id: int
+    model: torch.nn.Module
+    optimizer: torch.optim.Optimizer
+    epochs_run: int
+    batch_size: int
+
+    # Model data
+    criterion: torch.nn.Module
+    train_sampler: DistributedSampler
+    val_sampler: DistributedSampler
+    train_loader: DataLoader
+    val_loader: DataLoader
+    test_sampler: DistributedSampler
+    test_loader: DataLoader
+
+
+
     def __init__(
         self,
         gpu_id: str,
@@ -25,6 +45,7 @@ class Trainer:
         self.optimizer = optimizer
         self.epochs_run = 0
         self.criterion = torch.nn.MSELoss().to(self.gpu_id)
+        self.batch_size = batch_size
 
         # Process data
         dataset = CaloriesDataset('train.csv')
@@ -73,6 +94,30 @@ class Trainer:
 
         if self.gpu_id == 0:
             print(f'Epoch {epoch+1}/{num_epochs}, Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}')
+
+    def generate_prediction(self, data_path: str):
+        # Load the test dataset
+        test_dataset = CaloriesTest(data_path)
+        self.test_loader = DataLoader(
+            test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=4
+        )
+
+        # Inference
+        self.model.eval()
+        predictions = []
+        with torch.no_grad():
+            for inputs in self.test_loader:
+                inputs = inputs.to(self.gpu_id)
+                outputs = self.model(inputs).squeeze().cpu()
+                predictions.append(outputs.numpy())
+
+        # Save predictions to a CSV file
+        all_predictions = np.concatenate(predictions, axis=0)
+        predictions_df = pl.DataFrame({
+            'id': test_dataset.rdata['id'],
+            'Calories': all_predictions.tolist()
+        })
+        predictions_df.write_csv('predictions.csv')
 
 
 

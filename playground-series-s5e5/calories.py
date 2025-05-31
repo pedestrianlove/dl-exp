@@ -71,3 +71,39 @@ class CaloriesPrediction(nn.Module):
         x = self.activation(x)
         x = self.output_layer(x)
         return x
+
+class CaloriesTest(Dataset):
+    # Class members
+    data: pl.DataFrame
+    rdata: pl.DataFrame
+    feature_cols: list[str]
+
+    # Constructor
+    def __init__(self, data_path: str):
+        self.feature_cols = [
+            'Sex', 'Age', 'Height', 'Weight', 'Duration', 'Heart_Rate', 'Body_Temp',
+        ]
+        self.rdata = pl.read_csv(data_path).with_columns(
+            pl.when(pl.col("Sex") == "male").then(1).otherwise(0).alias("Sex")
+        )
+        self.data = self.rdata.select(pl.exclude('id'))
+
+    # Length of the dataset
+    def __len__(self):
+        return self.data.height
+
+    # Get item by index
+    def __getitem__(self, idx: int):
+        # 2) grab the entire row as a tuple
+        row = self.data.row(idx)  
+        #    row will be (feat1, feat2, ..., feat7, label)
+
+        # 3) split out features vs. label by column index
+        #    assume feature_cols is a list like ["f1","f2",…,"f7"]
+        #    and label_col is the last column name
+        feat_vals = row[:len(self.feature_cols)]
+
+        # 4) to Tensor
+        x = torch.tensor(feat_vals, dtype=torch.float32)
+
+        return x
