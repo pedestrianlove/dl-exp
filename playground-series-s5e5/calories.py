@@ -61,8 +61,16 @@ class CaloriesPrediction(nn.Module):
             nn.Linear(256, 512),
             nn.ReLU(),
             nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
         )
-        self.output_layer = nn.Linear(1024, 1)
+        self.output_layer = nn.Linear(64, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.input_layer(x)

@@ -12,12 +12,12 @@ model = CaloriesPrediction()
 calories_trainer = Trainer(
     gpu_id=os.environ["LOCAL_RANK"],
     model=model,
-    optimizer=torch.optim.Adam(model.parameters(), lr=0.0001),
-    batch_size=320,  # Adjust batch size as needed
+    optimizer=torch.optim.AdamW(model.parameters(), lr=0.0001),
+    batch_size=3200,  # Adjust batch size as needed
 )
 
 ## Train the model
-calories_trainer.train(max_epochs=40)  # Adjust max_epochs as needed
+calories_trainer.train(max_epochs=600)  # Adjust max_epochs as needed
 
 ## Generate predictions
 if os.environ.get("LOCAL_RANK") == "0":

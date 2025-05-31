@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, TensorDataset, random_split
 import numpy as np
 
 import os
@@ -43,6 +43,9 @@ class Trainer:
         self.gpu_id = int(gpu_id)
         self.model = DDP(model.to(self.gpu_id), device_ids=[self.gpu_id])
         self.optimizer = optimizer
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode='min', factor=0.5, patience=10
+        )
         self.epochs_run = 0
         self.criterion = torch.nn.MSELoss().to(self.gpu_id)
         self.batch_size = batch_size
@@ -54,6 +57,7 @@ class Trainer:
         val_size   = total_size - train_size
         training_set, validation_set = random_split(dataset, [train_size, val_size],
                                 generator=torch.Generator().manual_seed(42))
+
         self.train_sampler = DistributedSampler(
             training_set,
             num_replicas=torch.distributed.get_world_size(),
@@ -91,6 +95,7 @@ class Trainer:
                 outputs = self.model(inputs)
                 val_loss += self.criterion(outputs.squeeze(), labels).item()
             val_loss /= len(self.val_loader)
+            self.scheduler.step(val_loss)
 
         if self.gpu_id == 0:
             print(f'Epoch {epoch+1}/{num_epochs}, Loss: {loss.item():.4f}, Val Loss: {val_loss:.4f}')
@@ -116,7 +121,9 @@ class Trainer:
         predictions_df = pl.DataFrame({
             'id': test_dataset.rdata['id'],
             'Calories': all_predictions.tolist()
-        })
+        }).with_columns(
+            pl.col("Calories").clip(lower_bound=0)
+        )
         predictions_df.write_csv('predictions.csv')
 
 
