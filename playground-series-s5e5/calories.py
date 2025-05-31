@@ -14,11 +14,16 @@ class CaloriesDataset(Dataset):
     def __init__(self, data_path: str):
         self.feature_cols = [
             'Sex', 'Age', 'Height', 'Weight', 'Duration', 'Heart_Rate', 'Body_Temp',
+            'BMI', 'HR_Duration'
         ]
         self.label = 'Calories'
         self.data = pl.read_csv(data_path).with_columns(
-            pl.when(pl.col("Sex") == "male").then(1).otherwise(0).alias("Sex")
+            pl.when(pl.col("Sex") == "male").then(1).otherwise(0).alias("Sex"),
+            (((pl.col("Weight") / (pl.col("Height") / 100) ** 2) - 24) ** 2 ).alias("BMI"),
+            (pl.col("Heart_Rate") * pl.col("Duration")).alias("HR_Duration"),
         ).select(pl.exclude('id'))
+        total = self.feature_cols + [self.label]
+        self.data = self.data.select(total)
 
     # Length of the dataset
     def __len__(self):
@@ -53,43 +58,43 @@ class CaloriesPrediction(nn.Module):
         super().__init__()
         self.activation = nn.ReLU()
         self.input_layer = nn.Sequential(
-            nn.Linear(7, 16),
+            nn.Linear(9, 16),
             nn.BatchNorm1d(16)
         ) 
         self.medium_layers = nn.Sequential(
             nn.Linear(16, 32),
             nn.BatchNorm1d(32),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(32, 64),
             nn.BatchNorm1d(64),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(64, 128),
             nn.BatchNorm1d(128),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(128, 256),
             nn.BatchNorm1d(256),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(256, 512),
             nn.BatchNorm1d(512),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(512, 1024),
             nn.BatchNorm1d(1024),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(1024, 512),
             nn.BatchNorm1d(512),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(512, 256),
             nn.BatchNorm1d(256),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(128, 64),
             nn.BatchNorm1d(64),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(64, 32),
             nn.BatchNorm1d(32),
-            nn.ReLU(),
+            self.activation,
             nn.Linear(32, 16),
             nn.BatchNorm1d(16),
         )
@@ -113,10 +118,13 @@ class CaloriesTest(Dataset):
     def __init__(self, data_path: str):
         self.feature_cols = [
             'Sex', 'Age', 'Height', 'Weight', 'Duration', 'Heart_Rate', 'Body_Temp',
+            'BMI', 'HR_Duration'
         ]
         self.rdata = pl.read_csv(data_path).with_columns(
-            pl.when(pl.col("Sex") == "male").then(1).otherwise(0).alias("Sex")
-        )
+            pl.when(pl.col("Sex") == "male").then(1).otherwise(0).alias("Sex"),
+            (((pl.col("Weight") / (pl.col("Height") / 100) ** 2) - 24) ** 2 ).alias("BMI"),
+            (pl.col("Heart_Rate") * pl.col("Duration")).alias("HR_Duration"),
+        ).select(['id'] + self.feature_cols)
         self.data = self.rdata.select(pl.exclude('id'))
 
     # Length of the dataset
