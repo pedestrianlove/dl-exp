@@ -33,8 +33,20 @@ class Trainer:
         val_size   = total_size - train_size
         training_set, validation_set = random_split(dataset, [train_size, val_size],
                                 generator=torch.Generator().manual_seed(42))
-        self.train_loader = DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=4)
-        self.val_loader = DataLoader(validation_set, batch_size=batch_size, shuffle=False, num_workers=4)
+        self.train_sampler = DistributedSampler(
+            training_set,
+            num_replicas=torch.distributed.get_world_size(),
+            rank=self.gpu_id,
+            shuffle=True
+        )
+        self.val_sampler = DistributedSampler(
+            validation_set,
+            num_replicas=torch.distributed.get_world_size(),
+            rank=self.gpu_id,
+            shuffle=False
+        )
+        self.train_loader = DataLoader(training_set, batch_size=batch_size, sampler=self.train_sampler, num_workers=4)
+        self.val_loader = DataLoader(validation_set, batch_size=batch_size, sampler=self.val_sampler, num_workers=4)
 
 
     def train(self, max_epochs: int):
