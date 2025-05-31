@@ -52,31 +52,46 @@ class CaloriesPrediction(nn.Module):
     def __init__(self):
         super().__init__()
         self.activation = nn.ReLU()
-        self.input_layer = nn.Linear(7, 16)
+        self.input_layer = nn.Sequential(
+            nn.Linear(7, 16),
+            nn.BatchNorm1d(16)
+        ) 
         self.medium_layers = nn.Sequential(
             nn.Linear(16, 32),
+            nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Linear(32, 64),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Linear(256, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
             nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
             nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64, 32),
+            nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Linear(32, 16),
+            nn.BatchNorm1d(16),
         )
         self.output_layer = nn.Linear(16, 1)
 
