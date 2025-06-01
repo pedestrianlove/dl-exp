@@ -14,6 +14,7 @@ cudnn = ">=9.10.1.4,<10"
 cmake = ">=4.0.2,<5"
 ninja = ">=1.12.1,<2"
 tqdm = ">=4.67.1,<5"
+dvc = ">=3.59.2,<4"
 
 [pypi-dependencies]
 torch = { version = "==2.6.0", index = "https://download.pytorch.org/whl/cu126" }
